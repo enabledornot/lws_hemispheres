@@ -35,16 +35,20 @@ max_lambda = 750.
 
 def generate_radar_dict():
     rad_list = []
-    rad_list.append(('bks', 39.6, -81.1))
-    rad_list.append(('wal', 41.8, -72.2))
-    rad_list.append(('fhe', 42.5, -95.0))
-    rad_list.append(('fhw', 43.3, -102.7))
-    rad_list.append(('cve', 46.4, -114.6))
-    rad_list.append(('cvw', 47.9, -123.4))
-    rad_list.append(('gbr', 58.4, -59.9))
-    rad_list.append(('kap', 55.5, -85.0))
-    rad_list.append(('sas', 56.1, -103.8))
-    rad_list.append(('pgr', 58.0, -123.5))
+    # rad_list.append(('bks', 39.6, -81.1))
+    # rad_list.append(('wal', 41.8, -72.2))
+    # rad_list.append(('fhe', 42.5, -95.0))
+    # rad_list.append(('fhw', 43.3, -102.7))
+    # rad_list.append(('cve', 46.4, -114.6))
+    # rad_list.append(('cvw', 47.9, -123.4))
+    # rad_list.append(('gbr', 58.4, -59.9))
+    # rad_list.append(('kap', 55.5, -85.0))
+    # rad_list.append(('sas', 56.1, -103.8))
+    # rad_list.append(('pgr', 58.0, -123.5))
+    rad_list.append(('fir', -52.0, -59.0))
+    rad_list.append(('tig', -43.0, 147.0))
+    rad_list.append(('bpk', -34.62, 138.64))
+    rad_list.append(('unw', -46.51, 168.38))
 
 #    rad_list.append(('sto', 63.86, -21.031))
 #    rad_list.append(('pyk', 63.77, -20.54))
@@ -172,7 +176,7 @@ for season in tqdm.tqdm(seasons,desc='Seasons',dynamic_ncols=True,position=0):
                     # Check to see if music_item has 'signals' key.
                     # Only report MUSIC analysis for MSTID periods.
                     sigs = music_item.get('signals')
-                    if sigs is not None and item['category_manu'] == 'mstid':
+                    if sigs is not None and 'category_menu' in item and item['category_manu'] == 'mstid':
                         for sig in sigs:
                             sigOrder = sig.get('order')
 

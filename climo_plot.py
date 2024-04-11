@@ -812,7 +812,14 @@ class ParameterObject(object):
     #            fl  = os.path.join(data_dir,'sdMSTIDindex_{!s}_{!s}.nc'.format(season,radar))
                 patt    = os.path.join(data_dir,'*{!s}_{!s}.nc'.format(season,radar))
                 print('Loading: {!s}'.format(patt))
-                fl      = glob.glob(patt)[0]
+                try:
+                    fl      = glob.glob(patt)[0]
+                except:
+                    fl = None
+                    print('error happened')
+                # except:
+                    # return None
+                    # import ipdb; ipdb.set_trace()
                 tqdm.tqdm.write('--> {!s}: {!s}'.format(param,fl))
                 dsr = xr.open_dataset(fl)
                 ds.append(dsr)
@@ -1133,7 +1140,12 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
             data_df = None
             prmd    = prm_dct.get(param,{})
         else:
-            data_df = po.data[season]['df']
+            try:
+                data_df = po.data[season]['df']
+            except:
+                # ogkmig5ok0
+                print('error IDd')
+                # import ipdb;ipdb.set_trace()
             prmd    = po.prmd
 
         if inx == nrows-1:
@@ -1382,24 +1394,24 @@ if __name__ == '__main__':
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_MUSIC','guc')
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter_using_mstid_2016_dates','guc')
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_2016','guc')
-    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter_rtiThresh-0.25','guc')
+    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter','guc')
     plot_climatologies  = False
     plot_histograms     = False
     plot_stackplots     = True
 
     radars          = []
     # 'High Latitude Radars'
-    radars.append('pgr')
-    radars.append('sas')
-    radars.append('kap')
-    radars.append('gbr')
+    # radars.append('pgr')
+    # radars.append('sas')
+    # radars.append('kap')
+    # radars.append('gbr')
     # 'Mid Latitude Radars'
-    radars.append('cvw')
-    radars.append('cve')
-    radars.append('fhw')
-    radars.append('fhe')
-    radars.append('bks')
-    radars.append('wal')
+    # radars.append('cvw')
+    # radars.append('cve')
+    # radars.append('fhw')
+    # radars.append('fhe')
+    # radars.append('bks')
+    # radars.append('wal')
 
 #    # Ordered by Longitude
 #    radars          = []
@@ -1413,10 +1425,16 @@ if __name__ == '__main__':
 #    radars.append('bks')
 #    radars.append('wal')
 #    radars.append('gbr')
-
+    # Southern Radars
+    # radars.append('san')
+    radars.append('fir')
+    radars.append('tig')
+    radars.append('unw')
+    # buckland park
+    radars.append('bpk')
     params = []
     params.append('meanSubIntSpect_by_rtiCnt') # This is the MSTID index.
-#    params.append('meanSubIntSpect')
+    # params.append('intSpect')
 #    params.append('intSpect_by_rtiCnt')
 #    params.append('intSpect')
 
@@ -1425,7 +1443,7 @@ if __name__ == '__main__':
 #    params.append('sig_001_period_min')
 #    params.append('sig_001_vel_mps')
 
-#    params.append('reject_code')
+    params.append('reject_code')
 
 #    params.append('U_10HPA')
 #    params.append('U_1HPA')
@@ -1508,20 +1526,22 @@ if __name__ == '__main__':
 #    ss.append('meanSubIntSpect_by_rtiCnt')
 #    ss.append('reject_code')
 
-#    ss = stack_sets['mstid_index_reduced'] = []
-#    ss.append('meanSubIntSpect_by_rtiCnt')
-#    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
+    ss = stack_sets['mstid_index_reduced'] = []
+    ss.append('reject_code')
+    ss.append('meanSubIntSpect_by_rtiCnt')
+    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
+    # ss.append('intSpect')
 #
 ##    ss = stack_sets['mstid_index'] = []
 ##    ss.append('meanSubIntSpect_by_rtiCnt')
 
-    ss = stack_sets['figure_3'] = []
-    ss.append('merra2CipsAirsTimeSeries')
-    ss.append('HIAMCM')
-    ss.append('gnss_dtec_gw')
-    ss.append('meanSubIntSpect_by_rtiCnt')
-    ss.append('lstid_ham')
-    ss.append('sme')
+    # ss = stack_sets['figure_3'] = []
+    # ss.append('merra2CipsAirsTimeSeries')
+    # ss.append('HIAMCM')
+    # ss.append('gnss_dtec_gw')
+    # ss.append('meanSubIntSpect_by_rtiCnt')
+    # ss.append('lstid_ham')
+    # ss.append('sme')
 #    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
 
     if plot_stackplots:
