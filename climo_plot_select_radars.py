@@ -1122,169 +1122,36 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
     for inx,param in enumerate(params):
         ax      = fig.add_subplot(nrows,ncols,inx+1)
 
-        if param.endswith('_reducedIndex'):
-            base_param      = param.rstrip('_reducedIndex')
-            plotType        = 'reducedIndex'
-        elif    (param == 'merra2CipsAirsTimeSeries' 
-              or param == 'gnss_dtec_gw' 
-              or param == 'lstid_ham'
-              or param == 'sme'
-              or param == 'HIAMCM'):
-            base_param      = param
-            plotType        = param
-        else:
-            base_param      = param
-            plotType        = 'climo'
+        base_param      = param
+        plotType        = 'climo'
 
         # Get Parameter Object
         po      = po_dct.get(base_param)
-        # import ipdb; ipdb.set_trace()
-        if plotType == 'reducedIndex':
-            data_df = po.data[season]['reducedIndex']
-            prmd    = prm_dct.get(param,{})
-        elif  (plotType == 'merra2CipsAirsTimeSeries' 
-            or plotType == 'gnss_dtec_gw' 
-            or plotType == 'lstid_ham'
-            or plotType == 'sme'
-            or plotType == 'HIAMCM'):
-            data_df = None
-            prmd    = prm_dct.get(param,{})
-        else:
-            try:
-                data_df = po.data[season]['df']
-            except:
-                # ogkmig5ok0
-                print('error IDd')
-                # import ipdb;ipdb.set_trace()
-            prmd    = po.prmd
+
+        try:
+            data_df = po.data[season]['df']
+        except:
+            # ogkmig5ok0
+            print('error IDd')
+            # import ipdb;ipdb.set_trace()
+        prmd    = po.prmd
 
         if inx == nrows-1:
             xlabels = True
         else:
             xlabels = False
 
-        if plotType == 'reducedIndex':
-            handles = []
+        if radars is None:
+            _radars = po.radars
+        else:
+            _radars = radars
 
-            xx      = data_df.index
-            yy      = data_df['reduced_index']
-            label   = 'Raw'
-            hndl    = ax.plot(xx,yy,label=label)
-            handles.append(hndl[0])
+        ax_info = plot_mstid_values(data_df,ax,radars=_radars,param=param,xlabels=xlabels,
+                sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
 
-            xx      = data_df.index
-            yy      = data_df['smoothed']
-            ri_attrs    = po.data[season]['reducedIndex_attrs']
-            label   = '{!s} Rolling {!s}'.format(ri_attrs['smoothing_window'],ri_attrs['smoothing_type'].capitalize())
-            hndl    = ax.plot(xx,yy,lw=3,label=label)
-            handles.append(hndl[0])
-
-            ax1     = ax.twinx()
-            xx      = data_df.index
-            yy      = data_df['n_good_df']
-            label   = 'n Data Points'
-            hndl    = ax1.plot(xx,yy,color='0.8',ls='--',label=label)
-            ax1.set_ylabel('n Data Points\n(Dashed Line)',fontdict=ylabel_fontdict)
-            handles.append(hndl[0])
-
-            ax.legend(handles=handles,loc='lower left',ncols=3,prop=reduced_legend_fontdict)
-
-            ax.set_xlim(sDate,eDate)
-
-            min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
-            ax.set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-        elif plotType == 'merra2CipsAirsTimeSeries':
-            mca     = merra2CipsAirsTimeSeries.Merra2CipsAirsTS()
-            if 'scale_0' in prmd:
-                prmd['vmin'] = prmd['scale_0']
-            if 'scale_1' in prmd:
-                prmd['vmax'] = prmd['scale_1']
-            result  = mca.plot_ax(ax,plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
-
-            ax.set_xlim(sDate,eDate)
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-            ax_info['cbar_pcoll']   = result['cbar_pcoll']
-            ax_info['cbar_label']   = prmd.get('cbar_label')
-        elif plotType == 'gnss_dtec_gw':
-            dTEC = gnss_dtec_gw.GNSS_dTEC_GW()
-            result  = dTEC.plot_ax(ax,plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
-
-            ax.set_xlim(sDate,eDate)
-            ax.set_ylim(40,50)
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-            ax_info['cbar_pcoll']   = result['cbar_pcoll']
-            ax_info['cbar_label']   = prmd.get('cbar_label')
-        elif plotType == 'lstid_ham':
-            lstid = lstid_ham.LSTID_HAM()
-            result  = lstid.plot_ax(ax,legend_fontsize='x-large',ylabel_fontdict=ylabel_fontdict,
-                    legend_ncols=1,**prmd)
-
-            ax.set_xlim(sDate,eDate)
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-        elif plotType == 'sme':
-            sme     = sme_plot.SME_PLOT()
-            result  = sme.plot_ax(ax,legend_fontsize='x-large',ylabel_fontdict=ylabel_fontdict,
-                    xlim=(sDate,eDate),**prmd)
-
-            ax.set_xlim(sDate,eDate)
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-        elif plotType == 'HIAMCM':
-            hiamcm  = HIAMCM.HIAMCM()
-            result  = hiamcm.plot_ax(ax,prm='ww',lats=(40.,60.),
-                                     plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
-
-            ax.set_xlim(sDate,eDate)
-
-            if xlabels is False:
-                ax.set_xlabel('')
-
-            ax_info = {}
-            ax_info['ax']           = ax
-            ax_info['cbar_pcoll']   = result['cbar_pcoll']
-            ax_info['cbar_label']   = result.get('cbar_label')
-
-            prmd['title'] = result.get('title')
-        else: 
-            if radars is None:
-                _radars = po.radars
-            else:
-                _radars = radars
-
-            ax_info = plot_mstid_values(data_df,ax,radars=_radars,param=param,xlabels=xlabels,
-                    sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
-
-            min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
-            ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
-            ax_info['radar_ax']     = True
+        min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
+        ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
+        ax_info['radar_ax']     = True
         ax_list.append(ax_info)
 
         ylim    = prmd.get('ylim')
@@ -1453,35 +1320,10 @@ if __name__ == '__main__':
     radars.append('zho')
     params = []
     params.append('meanSubIntSpect_by_rtiCnt') # This is the MSTID index.
-    # params.append('intSpect')
-#    params.append('intSpect_by_rtiCnt')
-#    params.append('intSpect')
 
-#    params.append('sig_001_azm_deg')
-#    params.append('sig_001_lambda_km')
-#    params.append('sig_001_period_min')
-#    params.append('sig_001_vel_mps')
-
-    # params.append('reject_code')
-
-#    params.append('U_10HPA')
-#    params.append('U_1HPA')
-
-#    params.append('OMNI_R_Sunspot_Number')
-#    params.append('OMNI_Dst')
-#    params.append('OMNI_F10.7')
-#    params.append('OMNI_AE')
-
-#    params.append('1-H_AE_nT')
-#    params.append('1-H_DST_nT')
-#    params.append('DAILY_F10.7_')
-#    params.append('DAILY_SUNSPOT_NO_')
 
     seasons = list_seasons(yr_0=2010,yr_1=2011)
-#    seasons = []
-#    seasons.append('20121101_20130501')
-##    seasons.append('20171101_20180501')
-#    seasons.append('20181101_20190501')
+
 
 ################################################################################
 # LOAD RADAR DATA ##############################################################
@@ -1503,66 +1345,19 @@ if __name__ == '__main__':
 
         po_dct[param]   = po
 
-################################################################################
-# CLIMATOLOGIES ################################################################
-
-    if plot_climatologies:
-        for param,po in po_dct.items():
-            print('Plotting Climatology: {!s}'.format(param))
-            po.plot_climatology()
-
-################################################################################
-# HISTOGRAMS ###################################################################
-    if plot_histograms:
-        for param,po in po_dct.items():
-            print('Plotting Climatology: {!s}'.format(param))
-            po.plot_histograms()
 
 ################################################################################
 # STACKPLOTS ###################################################################
 
     stack_sets  = {}
-##    ss = stack_sets['cdaweb_omni'] = []
-##    ss.append('meanSubIntSpect_by_rtiCnt')
-##    ss.append('1-H_AE_nT')
-##    ss.append('1-H_DST_nT')
-##    ss.append('DAILY_F10.7_')
-###    ss.append('DAILY_SUNSPOT_NO_')
 
-#    ss = stack_sets['omni'] = []
-#    ss.append('meanSubIntSpect_by_rtiCnt')
-#    ss.append('OMNI_AE')
-#    ss.append('OMNI_Dst')
-##    ss.append('OMNI_F10.7')
-##    ss.append('OMNI_R_Sunspot_Number')
-#
-#    ss = stack_sets['mstid_merra2'] = []
-#    ss.append('meanSubIntSpect_by_rtiCnt')
-#    ss.append('U_1HPA')
-#    ss.append('U_10HPA')
-#
-#    ss = stack_sets['data_quality'] = []
-#    ss.append('meanSubIntSpect_by_rtiCnt')
-#    ss.append('reject_code')
 
     ss = stack_sets['mstid_index_reduced'] = []
     # ss.append('reject_code')
     ss.append('meanSubIntSpect_by_rtiCnt')
     # ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
     # ss.append('intSpect')
-#
-##    ss = stack_sets['mstid_index'] = []
-##    ss.append('meanSubIntSpect_by_rtiCnt')
 
-    # ss = stack_sets['figure_3'] = []
-    # ss.append('merra2CipsAirsTimeSeries')
-    # ss.append('HIAMCM')
-    # ss.append('gnss_dtec_gw')
-    # ss.append('meanSubIntSpect_by_rtiCnt')
-    # ss.append('lstid_ham')
-    # ss.append('sme')
-#    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
-    # import ipdb; ipdb.set_trace()
     if plot_stackplots:
         for stack_code,stack_params in stack_sets.items():
             stack_dir  = os.path.join(output_base_dir,'stackplots',stack_code)
