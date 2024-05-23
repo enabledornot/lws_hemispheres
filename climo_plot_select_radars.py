@@ -579,7 +579,53 @@ def list_seasons(yr_0=2010,yr_1=2022):
         yr += 1
 
     return seasons
-
+def index_to_ts_i(ts):
+    return int(ts.time().hour / 2)
+def get_data_count_radar(dd_y_df):
+    counts = [{},{},{},{},{},{},{},{},{},{},{},{}]
+    for radar in dd_y_df:
+        for c in counts:
+            c[radar] = 0
+        for ts in dd_y_df[radar].index:
+            hour = index_to_ts_i(ts)
+            if not np.isnan(dd_y_df[radar][ts]):
+                counts[hour][radar] += 1
+    return counts
+def get_best_radars(dd_y_df):
+    counts = get_data_count_radar(dd_y_df)
+    top = [[],[],[],[]]
+    for ts in counts:
+        for i in range(4):
+            max_radar = max(ts,key=ts.get)
+            top[i].append(max_radar)
+            ts[max_radar] = -1
+    # import ipdb;ipdb.set_trace()
+    return top
+# selects data for a particular radar given a time series
+def select_ts(ts, df_r):
+    # condition = index_to_ts_i(df_r.index) == ts
+    return df_r.loc[[index_to_ts_i(t) == ts for t in df_r.index]]
+# Modifies a dataDct so that it only includes the top 4 radars for a given time series
+def modify_for_best(dataDct):
+    # import ipdb;ipdb.set_trace()
+    new_radars = []
+    for year in dataDct:
+        dd_y = dataDct[year]
+        dd_y['attrs_radars'] = {}
+        df = dd_y['df']
+        best_radars = get_best_radars(df)
+        v_radar_data = []
+        for dex, vrum in enumerate(best_radars):
+            ts_list = []
+            for i, radar in enumerate(vrum):
+                ts_list.append(select_ts(i,df[radar]))
+            v_radar_data.append(pd.concat(ts_list))
+            v_radar_data[-1].name = "v_{}".format(dex)
+            new_radars.append(v_radar_data[-1].name)
+        new_df = pd.concat(v_radar_data,axis=1)
+        dd_y['df'] = new_df
+        # import ipdb;ipdb.set_trace()
+    return new_radars
 class ParameterObject(object):
     def __init__(self,param,radars,seasons=None,
             output_dir='output',default_data_dir=os.path.join('data','mstid_index'),
@@ -656,17 +702,15 @@ class ParameterObject(object):
             print('   ERROR calulating min_orig_rti_fraction while creating ParameterObject for {!s}'.format(param))
 
         self.output_dir = output_dir
-        if write_csvs:
-            print('Generating Season CSV Files...')
-            for season in seasons:
-                self.write_csv(season,output_dir=self.output_dir)
+        # if write_csvs:
+        #     print('Generating Season CSV Files...')
+        #     for season in seasons:
+        #         self.write_csv(season,output_dir=self.output_dir)
 
-            csv_fpath   = os.path.join(self.output_dir,'radars.csv')
-            self.lat_lons.to_csv(csv_fpath,index=False)
+        #     csv_fpath   = os.path.join(self.output_dir,'radars.csv')
+        #     self.lat_lons.to_csv(csv_fpath,index=False)
 
-        if calculate_reduced:
-            for season in seasons:
-                self.calculate_reduced_index(season,write_csvs=write_csvs)
+
 
     def flatten(self,dataDct=None):
         """
@@ -685,105 +729,6 @@ class ParameterObject(object):
 
         data = np.concatenate(data)
         return data
-
-    def calculate_reduced_index(self,season,
-            reduction_type='mean',daily_vals=True,zscore=True,
-            smoothing_window   = '4D', smoothing_type='mean', write_csvs=True):
-        """
-        Reduce the MSTID index from all radars into a single number as a function of time.
-
-        This function will work on any paramter, not just the MSTID index.
-        """
-        print("Calulating reduced MSTID index.")
-
-        mstid_inx_dict  = {} # Create a place to store the data.
-
-        df = self.data[season]['df']
-
-        # Put everything into a dataframe.
-        
-        if daily_vals:
-            date_list   = np.unique([datetime.datetime(x.year,x.month,x.day) for x in df.index])
-
-            tmp_list        = []
-            n_good_radars   = []    # Set up a system for parameterizing data quality.
-            for tmp_sd in date_list:
-                tmp_ed      = tmp_sd + datetime.timedelta(days=1)
-
-                tf          = np.logical_and(df.index >= tmp_sd, df.index < tmp_ed)
-                tmp_df      = df[tf]
-                if reduction_type == 'median':
-                    tmp_vals    = tmp_df.median().to_dict()
-                elif reduction_type == 'mean':
-                    tmp_vals    = tmp_df.mean().to_dict()
-
-                tmp_list.append(tmp_vals)
-
-                n_good  = np.count_nonzero(np.isfinite(tmp_df))
-                n_good_radars.append(n_good)
-
-            df = pd.DataFrame(tmp_list,index=date_list)
-            n_good_df   = pd.Series(n_good_radars,df.index)
-        else:
-            n_good_df   = np.sum(np.isfinite(df),axis=1)
-
-        data_arr    = np.array(df)
-        if reduction_type == 'median':
-            red_vals    = sp.nanmedian(data_arr,axis=1)
-        elif reduction_type == 'mean':
-            red_vals    = np.nanmean(data_arr,axis=1)
-
-        ts  = pd.Series(red_vals,df.index)
-        if zscore:
-            ts  = (ts - ts.mean())/ts.std()
-
-        reducedIndex = pd.DataFrame({'reduced_index':ts,'n_good_df':n_good_df},index=df.index)
-#        reducedIndex['smoothed']    = reducedIndex['reduced_index'].rolling(smoothing_window,center=True).mean()
-        reducedIndex['smoothed']    = getattr( reducedIndex['reduced_index'].rolling(smoothing_window,center=True), smoothing_type )()
-
-        self.data[season]['reducedIndex']    = reducedIndex
-
-        reducedIndex_attrs       = {}
-        reducedIndex_attrs['reduction_type']     = reduction_type
-        reducedIndex_attrs['zscore']             = zscore
-        reducedIndex_attrs['daily_vals']         = daily_vals
-        reducedIndex_attrs['smoothing_window']   = smoothing_window
-        reducedIndex_attrs['smoothing_type']     = smoothing_type
-        self.data[season]['reducedIndex_attrs']  = reducedIndex_attrs
-
-        param           = '{!s}_reducedIndex'.format(self.prmd.get('param'))
-        attrs_radars    = self.data[season]['attrs_radars']
-        attrs_season    = self.data[season]['attrs_season']
-
-        if write_csvs:
-            output_dir = self.output_dir
-
-            csv_fname       = '{!s}_{!s}.csv'.format(season,param)
-            csv_fpath       = os.path.join(output_dir,csv_fname)
-            with open(csv_fpath,'w') as fl:
-                hdr = []
-                hdr.append('# SuperDARN MSTID Index Datafile - Reduced Index')
-                hdr.append('# Generated by Nathaniel Frissell, nathaniel.frissell@scranton.edu')
-                hdr.append('# Generated on: {!s} UTC'.format(datetime.datetime.utcnow()))
-                hdr.append('#')
-                hdr.append('# Parameter: {!s}'.format(param))
-                hdr.append('#')
-                hdr.append('# {!s} Season Attributes:'.format(season))
-                hdr.append('# {!s}'.format(attrs_season))
-                hdr.append('#')
-                hdr.append('# Individual Radar Attributes:')
-                for radar,attr in attrs_radars.items():
-                    hdr.append('# {!s}: {!s}'.format(radar,attr))
-                hdr.append('#')
-                hdr.append('# Reduction Attributes:')
-                for attr in reducedIndex_attrs.items():
-                    hdr.append('# {!s}'.format(attr))
-                hdr.append('#')
-
-                fl.write('\n'.join(hdr))
-                fl.write('\n')
-                
-            reducedIndex.to_csv(csv_fpath,mode='a')
 
     def _load_data(self,param=None,selfUpdate=True):
         """
@@ -873,6 +818,8 @@ class ParameterObject(object):
         # Clean up lat_lon data table
         if selfUpdate is True:
             self.lat_lons    = pd.DataFrame(lat_lons).drop_duplicates()
+        # import ipdb; ipdb.set_trace()
+        self.radars = modify_for_best(dataDct)
         return dataDct
 
     def write_csv(self,season,output_dir=None):
@@ -1116,9 +1063,10 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
     print(' Plotting Stackplot: {!s}'.format(fpath))
     nrows   = len(params)
     ncols   = 1
-    fig = plt.figure(figsize=(25,nrows*20)) # Change stackplot size
+    fig = plt.figure(figsize=(50,nrows*20)) # Change stackplot size
 
     ax_list = []
+    # import ipdb; ipdb.set_trace()
     for inx,param in enumerate(params):
         ax      = fig.add_subplot(nrows,ncols,inx+1)
 
@@ -1150,7 +1098,7 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
                 sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
 
         min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
-        ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
+        # ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
         ax_info['radar_ax']     = True
         ax_list.append(ax_info)
 
@@ -1159,8 +1107,8 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
             ax.set_ylim(ylim)
 
         ylabel  = prmd.get('ylabel')
-        if ylabel is not None:
-            ax.set_ylabel(ylabel,fontdict=ylabel_fontdict)
+        # if ylabel is not None:
+        #     ax.set_ylabel(ylabel,fontdict=ylabel_fontdict)
 
         txt = '({!s}) '.format(letters[inx])+prmd.get('title',param)
         left_title_fontdict  = {'weight': 'bold', 'size': 24}
@@ -1189,72 +1137,72 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
                   labels=False,short_labels=True,plot_axvline=False)
 
     fig.tight_layout()
+# SIDEBAR
+    # for param,ax_info in zip(params,ax_list):
+    #     # Plot Colorbar ################################################################
+    #     ax  = ax_info.get('ax')
+    #     if param == 'reject_code':
+    #         ax_pos  = ax.get_position()
+    #         x0  = 1.005
+    #         wdt = 0.015
+    #         y0  = ax_pos.extents[1]
+    #         hgt = ax_pos.height
 
-    for param,ax_info in zip(params,ax_list):
-        # Plot Colorbar ################################################################
-        ax  = ax_info.get('ax')
-        if param == 'reject_code':
-            ax_pos  = ax.get_position()
-            x0  = 1.005
-            wdt = 0.015
-            y0  = ax_pos.extents[1]
-            hgt = ax_pos.height
+    #         axl= fig.add_axes([x0, y0, wdt, hgt])
+    #         axl.axis('off')
 
-            axl= fig.add_axes([x0, y0, wdt, hgt])
-            axl.axis('off')
+    #         legend_elements = []
+    #         for rej_code, rej_dct in reject_codes.items():
+    #             color = rej_dct['color']
+    #             label = rej_dct['label']
+    #             # legend_elements.append(mpl.lines.Line2D([0], [0], ls='',marker='s', color=color, label=label,markersize=15))
+    #             legend_elements.append(mpl.patches.Patch(facecolor=color,edgecolor=color,label=label))
 
-            legend_elements = []
-            for rej_code, rej_dct in reject_codes.items():
-                color = rej_dct['color']
-                label = rej_dct['label']
-                # legend_elements.append(mpl.lines.Line2D([0], [0], ls='',marker='s', color=color, label=label,markersize=15))
-                legend_elements.append(mpl.patches.Patch(facecolor=color,edgecolor=color,label=label))
+    #         axl.legend(handles=legend_elements, loc='center left', fontsize = 18)
+    #     elif ax_info.get('cbar_pcoll') is not None:
+    #         ax_pos  = ax.get_position()
+    #         x0  = 1.01
+    #         wdt = 0.015
+    #         y0  = ax_pos.extents[1]
+    #         hgt = ax_pos.height
+    #         axColor = fig.add_axes([x0, y0, wdt, hgt])
+    #         axColor.grid(False)
 
-            axl.legend(handles=legend_elements, loc='center left', fontsize = 18)
-        elif ax_info.get('cbar_pcoll') is not None:
-            ax_pos  = ax.get_position()
-            x0  = 1.01
-            wdt = 0.015
-            y0  = ax_pos.extents[1]
-            hgt = ax_pos.height
-            axColor = fig.add_axes([x0, y0, wdt, hgt])
-            axColor.grid(False)
+    #         cbar_pcoll      = ax_info.get('cbar_pcoll')
+    #         cbar_label      = ax_info.get('cbar_label')
+    #         cbar_ticks      = ax_info.get('cbar_ticks')
+    #         cbar_tick_fmt   = prmd.get('cbar_tick_fmt')
+    #         cbar_tb_vis     = ax_info.get('cbar_tb_vis',False)
 
-            cbar_pcoll      = ax_info.get('cbar_pcoll')
-            cbar_label      = ax_info.get('cbar_label')
-            cbar_ticks      = ax_info.get('cbar_ticks')
-            cbar_tick_fmt   = prmd.get('cbar_tick_fmt')
-            cbar_tb_vis     = ax_info.get('cbar_tb_vis',False)
+	# 		# fraction : float, default: 0.15
+	# 		#     Fraction of original axes to use for colorbar.
+	# 		# 
+	# 		# shrink : float, default: 1.0
+	# 		#     Fraction by which to multiply the size of the colorbar.
+	# 		# 
+	# 		# aspect : float, default: 20
+	# 		#     Ratio of long to short dimensions.
+	# 		# 
+	# 		# pad : float, default: 0.05 if vertical, 0.15 if horizontal
+	# 		#     Fraction of original axes between colorbar and new image axes.
+    #         cbar  = fig.colorbar(cbar_pcoll,orientation='vertical',
+    #                 cax=axColor,format=cbar_tick_fmt)
 
-			# fraction : float, default: 0.15
-			#     Fraction of original axes to use for colorbar.
-			# 
-			# shrink : float, default: 1.0
-			#     Fraction by which to multiply the size of the colorbar.
-			# 
-			# aspect : float, default: 20
-			#     Ratio of long to short dimensions.
-			# 
-			# pad : float, default: 0.05 if vertical, 0.15 if horizontal
-			#     Fraction of original axes between colorbar and new image axes.
-            cbar  = fig.colorbar(cbar_pcoll,orientation='vertical',
-                    cax=axColor,format=cbar_tick_fmt)
+    #         cbar_label_fontdict = {'weight': 'bold', 'size': 24}
+    #         cbar.set_label(cbar_label,fontdict=cbar_label_fontdict)
+    #         if cbar_ticks is not None:
+    #             cbar.set_ticks(cbar_ticks)
 
-            cbar_label_fontdict = {'weight': 'bold', 'size': 24}
-            cbar.set_label(cbar_label,fontdict=cbar_label_fontdict)
-            if cbar_ticks is not None:
-                cbar.set_ticks(cbar_ticks)
+    #         cbar.ax.set_ylim( *(cbar_pcoll.get_clim()) )
 
-            cbar.ax.set_ylim( *(cbar_pcoll.get_clim()) )
-
-            labels = cbar.ax.get_yticklabels()
-            fontweight  = cbar_ytick_fontdict.get('weight')
-            fontsize    = 18
-            for label in labels:
-                if fontweight:
-                    label.set_fontweight(fontweight)
-                if fontsize:
-                    label.set_fontsize(fontsize)
+    #         labels = cbar.ax.get_yticklabels()
+    #         fontweight  = cbar_ytick_fontdict.get('weight')
+    #         fontsize    = 18
+    #         for label in labels:
+    #             if fontweight:
+    #                 label.set_fontweight(fontweight)
+    #             if fontsize:
+    #                 label.set_fontsize(fontsize)
 
     fig.savefig(fpath,bbox_inches='tight')
 
