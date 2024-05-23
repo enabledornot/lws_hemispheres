@@ -623,7 +623,6 @@ def modify_for_best(dataDct):
             v_radar_data[-1].name = "v_{}".format(dex)
         new_df = pd.concat(v_radar_data,axis=1)
         dd_y['df'] = new_df
-        # import ipdb;ipdb.set_trace()
     for i in range(4):
         new_radars.append("v_{}".format(i))
     return new_radars
