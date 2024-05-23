@@ -72,7 +72,7 @@ prmd['scale_1']         =  0.025
 prmd['cmap']            = mpl.cm.jet
 prmd['cbar_label']      = 'MSTID Index'
 prmd['cbar_tick_fmt']   = '%0.3f'
-prmd['title']           = 'Southern Hemisphere SuperDARN MSTID Index'
+prmd['title']           = 'North American SuperDARN MSTID Index (~40\N{DEGREE SIGN}-60\N{DEGREE SIGN} Latititude)'
 prmd['hist_bins']       = np.arange(-0.050,0.051,0.001)
 
 prmd = prm_dct['meanSubIntSpect'] = {}
@@ -234,8 +234,8 @@ prmd['title']           = 'Amateur Radio 14 MHz LSTID Observations'
 prmd = prm_dct['sme'] = {}
 prmd['title']           = 'SuperMAG Electrojet Index (SME)'
 
-# prmd = prm_dct['reject_code'] = {}
-# prmd['title']           = 'MSTID Index Data Quality Flag'
+prmd = prm_dct['reject_code'] = {}
+prmd['title']           = 'MSTID Index Data Quality Flag'
 
 # Reject code colors.
 reject_codes = {}
@@ -359,13 +359,13 @@ def my_xticks(sDate,eDate,ax,radar_ax=False,labels=True,short_labels=False,
                 ax.text(xpos,ypos,txt,transform=ytransaxes,
                         ha='left', va='top',rotation=0,
                         fontdict=fontdict)
-            # if short_labels:    
-            #     if curr_date.day == 1:
-            #         ypos    = -0.025
-            #         txt     = curr_date.strftime('%b %Y')
-            #         ax.text(xpos,ypos,txt,transform=ytransaxes,
-            #                 ha='left', va='top',rotation=0,
-            #                 fontdict=fontdict)
+            if short_labels:    
+                if curr_date.day == 1:
+                    ypos    = -0.025
+                    txt     = curr_date.strftime('%b %Y')
+                    ax.text(xpos,ypos,txt,transform=ytransaxes,
+                            ha='left', va='top',rotation=0,
+                            fontdict=fontdict)
         curr_date += datetime.timedelta(days=1)
 
     xmax    = (eDate - sDate).total_seconds() / (86400.)
@@ -396,11 +396,7 @@ def get_y_coords(ut_time,st_uts,radar,radars):
 def get_coords(radar,win_sDate,radars,sDate,eDate,st_uts,verts=True):
     # Y-coordinate.
     x1  = float(get_x_coords(win_sDate,sDate,eDate))
-    try:
-        y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars))
-    except:
-        print("That float conversion error on radar {}".format(radar))
-        y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars)[0])
+    y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars))
 
     if verts:
 #        x1,y1   = x1+0,y1+0
@@ -416,7 +412,7 @@ def get_coords(radar,win_sDate,radars,sDate,eDate,st_uts,verts=True):
 def plot_mstid_values(data_df,ax,sDate=None,eDate=None,
         st_uts=[14, 16, 18, 20],
         xlabels=True, group_name=None,classification_colors=False,
-        rasterized=False,radars=None,radar_labels=None,param=None,**kwargs):
+        rasterized=False,radars=None,param=None,**kwargs):
 
     prmd        = prm_dct.get(param,{})
 
@@ -443,9 +439,10 @@ def plot_mstid_values(data_df,ax,sDate=None,eDate=None,
 
     if radars is None:
         radars  = list(data_df.keys())
+
     # Reverse radars list order so that the supplied list is plotted top-down.
     radars  = radars[::-1]
-    # Height of y
+
     ymax    = len(st_uts) * len(radars)
 
     cbar_info   = {}
@@ -507,9 +504,8 @@ def plot_mstid_values(data_df,ax,sDate=None,eDate=None,
     trans = mpl.transforms.blended_transform_factory(ax.transAxes,ax.transData)
     for rdr_inx,radar in enumerate(radars):
         for st_inx,st_ut in enumerate(st_uts):
-            # import ipdb; ipdb.set_trace()
             ypos = len(radars)*st_inx + rdr_inx + 0.5
-            ax.text(-0.002,ypos,radar_labels[season][radar][st_inx],transform=trans,ha='right',va='center')
+            ax.text(-0.002,ypos,radar,transform=trans,ha='right',va='center')
 
     # Add UT Time Labels
     for st_inx,st_ut in enumerate(st_uts):
@@ -550,7 +546,7 @@ def plot_mstid_values(data_df,ax,sDate=None,eDate=None,
         txt = '{} ({})'.format(group_name,txt)
     ax.set_title(txt,fontdict=title_fontdict)
 
-    ax.set_title('',loc='right',fontdict=title_fontdict)
+    ax.set_title('Test',loc='right',fontdict=title_fontdict)
 
     ax_info         = {}
     ax_info['ax']   = ax
@@ -569,8 +565,8 @@ def list_seasons(yr_0=2010,yr_1=2022):
     yr = yr_0
     seasons = []
     while yr < yr_1:
-        dt_0 = datetime.datetime(yr,1,1)
-        dt_1 = datetime.datetime(yr+1,1,1)
+        dt_0 = datetime.datetime(yr,11,1)
+        dt_1 = datetime.datetime(yr+1,5,1)
 
         dt_0_str    = dt_0.strftime('%Y%m%d')
         dt_1_str    = dt_1.strftime('%Y%m%d')
@@ -579,59 +575,7 @@ def list_seasons(yr_0=2010,yr_1=2022):
         yr += 1
 
     return seasons
-def index_to_ts_i(ts):
-    return int(ts.time().hour / 2)
-def get_data_count_radar(dd_y_df):
-    counts = [{},{},{},{},{},{},{},{},{},{},{},{}]
-    for radar in dd_y_df:
-        for c in counts:
-            c[radar] = 0
-        for ts in dd_y_df[radar].index:
-            hour = index_to_ts_i(ts)
-            if not np.isnan(dd_y_df[radar][ts]):
-                counts[hour][radar] += 1
-    return counts
-def get_best_radars(dd_y_df):
-    counts = get_data_count_radar(dd_y_df)
-    top = [[],[],[],[]]
-    for ts in counts:
-        for i in range(4):
-            max_radar = max(ts,key=ts.get)
-            top[i].append(max_radar)
-            ts[max_radar] = -1
-    # import ipdb;ipdb.set_trace()
-    return top
-# selects data for a particular radar given a time series
-def select_ts(ts, df_r):
-    # condition = index_to_ts_i(df_r.index) == ts
-    return df_r.loc[[index_to_ts_i(t) == ts for t in df_r.index]]
-# Modifies a dataDct so that it only includes the top 4 radars for a given time series
-def modify_for_best(dataDct):
-    # import ipdb;ipdb.set_trace()
-    new_radars = []
-    for i in range(4):
-        radar_name = "v_{}".format(i)
-        new_radars.append(radar_name)
-    radar_labels = {}
-    for year in dataDct:
-        dd_y = dataDct[year]
-        dd_y['attrs_radars'] = {}
-        df = dd_y['df']
-        best_radars = get_best_radars(df)
-        v_radar_data = []
-        radar_labels[year] = {}
-        for dex, vrum in enumerate(best_radars):
-            ts_list = []
-            for i, radar in enumerate(vrum):
-                ts_list.append(select_ts(i,df[radar]))
-            v_radar_data.append(pd.concat(ts_list))
-            radar_name = "v_{}".format(dex)
-            v_radar_data[-1].name = radar_name
-            radar_labels[year][radar_name] = vrum
-        new_df = pd.concat(v_radar_data,axis=1)
-        dd_y['df'] = new_df
-    # import ipdb; ipdb.set_trace()
-    return new_radars, radar_labels
+
 class ParameterObject(object):
     def __init__(self,param,radars,seasons=None,
             output_dir='output',default_data_dir=os.path.join('data','mstid_index'),
@@ -658,8 +602,6 @@ class ParameterObject(object):
 
         # Get list of seasons.
         if seasons is None:
-            # Do Not set Seasons here
-            # It does not work
             seasons = list_seasons()
         self.attrs_global['seasons']    = seasons
 
@@ -708,15 +650,17 @@ class ParameterObject(object):
             print('   ERROR calulating min_orig_rti_fraction while creating ParameterObject for {!s}'.format(param))
 
         self.output_dir = output_dir
-        # if write_csvs:
-        #     print('Generating Season CSV Files...')
-        #     for season in seasons:
-        #         self.write_csv(season,output_dir=self.output_dir)
+        if write_csvs:
+            print('Generating Season CSV Files...')
+            for season in seasons:
+                self.write_csv(season,output_dir=self.output_dir)
 
-        #     csv_fpath   = os.path.join(self.output_dir,'radars.csv')
-        #     self.lat_lons.to_csv(csv_fpath,index=False)
+            csv_fpath   = os.path.join(self.output_dir,'radars.csv')
+            self.lat_lons.to_csv(csv_fpath,index=False)
 
-
+        if calculate_reduced:
+            for season in seasons:
+                self.calculate_reduced_index(season,write_csvs=write_csvs)
 
     def flatten(self,dataDct=None):
         """
@@ -735,6 +679,105 @@ class ParameterObject(object):
 
         data = np.concatenate(data)
         return data
+
+    def calculate_reduced_index(self,season,
+            reduction_type='mean',daily_vals=True,zscore=True,
+            smoothing_window   = '4D', smoothing_type='mean', write_csvs=True):
+        """
+        Reduce the MSTID index from all radars into a single number as a function of time.
+
+        This function will work on any paramter, not just the MSTID index.
+        """
+        print("Calulating reduced MSTID index.")
+
+        mstid_inx_dict  = {} # Create a place to store the data.
+
+        df = self.data[season]['df']
+
+        # Put everything into a dataframe.
+        
+        if daily_vals:
+            date_list   = np.unique([datetime.datetime(x.year,x.month,x.day) for x in df.index])
+
+            tmp_list        = []
+            n_good_radars   = []    # Set up a system for parameterizing data quality.
+            for tmp_sd in date_list:
+                tmp_ed      = tmp_sd + datetime.timedelta(days=1)
+
+                tf          = np.logical_and(df.index >= tmp_sd, df.index < tmp_ed)
+                tmp_df      = df[tf]
+                if reduction_type == 'median':
+                    tmp_vals    = tmp_df.median().to_dict()
+                elif reduction_type == 'mean':
+                    tmp_vals    = tmp_df.mean().to_dict()
+
+                tmp_list.append(tmp_vals)
+
+                n_good  = np.count_nonzero(np.isfinite(tmp_df))
+                n_good_radars.append(n_good)
+
+            df = pd.DataFrame(tmp_list,index=date_list)
+            n_good_df   = pd.Series(n_good_radars,df.index)
+        else:
+            n_good_df   = np.sum(np.isfinite(df),axis=1)
+
+        data_arr    = np.array(df)
+        if reduction_type == 'median':
+            red_vals    = sp.nanmedian(data_arr,axis=1)
+        elif reduction_type == 'mean':
+            red_vals    = np.nanmean(data_arr,axis=1)
+
+        ts  = pd.Series(red_vals,df.index)
+        if zscore:
+            ts  = (ts - ts.mean())/ts.std()
+
+        reducedIndex = pd.DataFrame({'reduced_index':ts,'n_good_df':n_good_df},index=df.index)
+#        reducedIndex['smoothed']    = reducedIndex['reduced_index'].rolling(smoothing_window,center=True).mean()
+        reducedIndex['smoothed']    = getattr( reducedIndex['reduced_index'].rolling(smoothing_window,center=True), smoothing_type )()
+
+        self.data[season]['reducedIndex']    = reducedIndex
+
+        reducedIndex_attrs       = {}
+        reducedIndex_attrs['reduction_type']     = reduction_type
+        reducedIndex_attrs['zscore']             = zscore
+        reducedIndex_attrs['daily_vals']         = daily_vals
+        reducedIndex_attrs['smoothing_window']   = smoothing_window
+        reducedIndex_attrs['smoothing_type']     = smoothing_type
+        self.data[season]['reducedIndex_attrs']  = reducedIndex_attrs
+
+        param           = '{!s}_reducedIndex'.format(self.prmd.get('param'))
+        attrs_radars    = self.data[season]['attrs_radars']
+        attrs_season    = self.data[season]['attrs_season']
+
+        if write_csvs:
+            output_dir = self.output_dir
+
+            csv_fname       = '{!s}_{!s}.csv'.format(season,param)
+            csv_fpath       = os.path.join(output_dir,csv_fname)
+            with open(csv_fpath,'w') as fl:
+                hdr = []
+                hdr.append('# SuperDARN MSTID Index Datafile - Reduced Index')
+                hdr.append('# Generated by Nathaniel Frissell, nathaniel.frissell@scranton.edu')
+                hdr.append('# Generated on: {!s} UTC'.format(datetime.datetime.utcnow()))
+                hdr.append('#')
+                hdr.append('# Parameter: {!s}'.format(param))
+                hdr.append('#')
+                hdr.append('# {!s} Season Attributes:'.format(season))
+                hdr.append('# {!s}'.format(attrs_season))
+                hdr.append('#')
+                hdr.append('# Individual Radar Attributes:')
+                for radar,attr in attrs_radars.items():
+                    hdr.append('# {!s}: {!s}'.format(radar,attr))
+                hdr.append('#')
+                hdr.append('# Reduction Attributes:')
+                for attr in reducedIndex_attrs.items():
+                    hdr.append('# {!s}'.format(attr))
+                hdr.append('#')
+
+                fl.write('\n'.join(hdr))
+                fl.write('\n')
+                
+            reducedIndex.to_csv(csv_fpath,mode='a')
 
     def _load_data(self,param=None,selfUpdate=True):
         """
@@ -773,8 +816,7 @@ class ParameterObject(object):
                     fl      = glob.glob(patt)[0]
                 except:
                     fl = None
-                    print('No data file found matching this pattern {}. Aborting'.format(patt))
-                    return
+                    print('error happened')
                 tqdm.tqdm.write('--> {!s}: {!s}'.format(param,fl))
                 dsr = xr.open_dataset(fl)
                 ds.append(dsr)
@@ -824,21 +866,15 @@ class ParameterObject(object):
         # Clean up lat_lon data table
         if selfUpdate is True:
             self.lat_lons    = pd.DataFrame(lat_lons).drop_duplicates()
-        # import ipdb; ipdb.set_trace()
-        self.radars, self.radar_labels = modify_for_best(dataDct)
         return dataDct
 
     def write_csv(self,season,output_dir=None):
-        
         """
         Save data to CSV files.
         """
 
         param           = self.prmd.get('param')
-        try:
-            df              = self.data[season]['df']
-        except:
-            import ipdb; ipdb.set_trace()
+        df              = self.data[season]['df']
         attrs_radars    = self.data[season]['attrs_radars']
         attrs_season    = self.data[season]['attrs_season']
         attrs_global    = self.attrs_global
@@ -880,7 +916,6 @@ class ParameterObject(object):
             output_dir = self.output_dir
 
         seasons = self.data.keys()
-        # import ipdb; ipdb.set_trace()
         radars  = self.radars
         param   = self.prmd['param']
 
@@ -896,14 +931,14 @@ class ParameterObject(object):
             data_df = self.data[season]['df']
             
             sDate, eDate = season_to_datetime(season)
-            ax_info = plot_mstid_values(data_df,ax,radars=radars,radar_labels=self.radar_labels,param=param,sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
+            ax_info = plot_mstid_values(data_df,ax,radars=radars,param=param,sDate=sDate,eDate=eDate)
             min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
             ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
             ax_list.append(ax_info)
 
             season_yr0 = season[:4]
             season_yr1 = season[9:13]
-            txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
+            txt = '{!s} - {!s} Northern Hemisphere Winter'.format(season_yr0,season_yr1)
             ax.set_title(txt,fontdict=title_fontdict)
 
         fig.tight_layout(w_pad=2.25)
@@ -1069,44 +1104,169 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
     print(' Plotting Stackplot: {!s}'.format(fpath))
     nrows   = len(params)
     ncols   = 1
-    fig = plt.figure(figsize=(50,nrows*20)) # Change stackplot size
+    fig = plt.figure(figsize=(25,nrows*5))
 
     ax_list = []
-    # import ipdb; ipdb.set_trace()
     for inx,param in enumerate(params):
-        # import ipdb; ipdb.set_trace()
         ax      = fig.add_subplot(nrows,ncols,inx+1)
 
-        base_param      = param
-        plotType        = 'climo'
+        if param.endswith('_reducedIndex'):
+            base_param      = param.rstrip('_reducedIndex')
+            plotType        = 'reducedIndex'
+        elif    (param == 'merra2CipsAirsTimeSeries' 
+              or param == 'gnss_dtec_gw' 
+              or param == 'lstid_ham'
+              or param == 'sme'
+              or param == 'HIAMCM'):
+            base_param      = param
+            plotType        = param
+        else:
+            base_param      = param
+            plotType        = 'climo'
 
         # Get Parameter Object
         po      = po_dct.get(base_param)
-
-        try:
+        if plotType == 'reducedIndex':
+            data_df = po.data[season]['reducedIndex']
+            prmd    = prm_dct.get(param,{})
+        elif  (plotType == 'merra2CipsAirsTimeSeries' 
+            or plotType == 'gnss_dtec_gw' 
+            or plotType == 'lstid_ham'
+            or plotType == 'sme'
+            or plotType == 'HIAMCM'):
+            data_df = None
+            prmd    = prm_dct.get(param,{})
+        else:
             data_df = po.data[season]['df']
-        except:
-            # ogkmig5ok0
-            print('error IDd')
-            # import ipdb;ipdb.set_trace()
-        prmd    = po.prmd
+            prmd    = po.prmd
 
         if inx == nrows-1:
             xlabels = True
         else:
             xlabels = False
 
-        if radars is None:
-            _radars = po.radars
-        else:
-            _radars = radars
+        if plotType == 'reducedIndex':
+            handles = []
 
-        ax_info = plot_mstid_values(data_df,ax,radars=_radars,radar_labels=po.radar_labels,param=param,xlabels=xlabels,
-                sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
+            xx      = data_df.index
+            yy      = data_df['reduced_index']
+            label   = 'Raw'
+            hndl    = ax.plot(xx,yy,label=label)
+            handles.append(hndl[0])
 
-        min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
-        # ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
-        ax_info['radar_ax']     = True
+            xx      = data_df.index
+            yy      = data_df['smoothed']
+            ri_attrs    = po.data[season]['reducedIndex_attrs']
+            label   = '{!s} Rolling {!s}'.format(ri_attrs['smoothing_window'],ri_attrs['smoothing_type'].capitalize())
+            hndl    = ax.plot(xx,yy,lw=3,label=label)
+            handles.append(hndl[0])
+
+            ax1     = ax.twinx()
+            xx      = data_df.index
+            yy      = data_df['n_good_df']
+            label   = 'n Data Points'
+            hndl    = ax1.plot(xx,yy,color='0.8',ls='--',label=label)
+            ax1.set_ylabel('n Data Points\n(Dashed Line)',fontdict=ylabel_fontdict)
+            handles.append(hndl[0])
+
+            ax.legend(handles=handles,loc='lower left',ncols=3,prop=reduced_legend_fontdict)
+
+            ax.set_xlim(sDate,eDate)
+
+            min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
+            ax.set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+        elif plotType == 'merra2CipsAirsTimeSeries':
+            mca     = merra2CipsAirsTimeSeries.Merra2CipsAirsTS()
+            if 'scale_0' in prmd:
+                prmd['vmin'] = prmd['scale_0']
+            if 'scale_1' in prmd:
+                prmd['vmax'] = prmd['scale_1']
+            result  = mca.plot_ax(ax,plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
+
+            ax.set_xlim(sDate,eDate)
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+            ax_info['cbar_pcoll']   = result['cbar_pcoll']
+            ax_info['cbar_label']   = prmd.get('cbar_label')
+        elif plotType == 'gnss_dtec_gw':
+            dTEC = gnss_dtec_gw.GNSS_dTEC_GW()
+            result  = dTEC.plot_ax(ax,plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
+
+            ax.set_xlim(sDate,eDate)
+            ax.set_ylim(40,50)
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+            ax_info['cbar_pcoll']   = result['cbar_pcoll']
+            ax_info['cbar_label']   = prmd.get('cbar_label')
+        elif plotType == 'lstid_ham':
+            lstid = lstid_ham.LSTID_HAM()
+            result  = lstid.plot_ax(ax,legend_fontsize='x-large',ylabel_fontdict=ylabel_fontdict,
+                    legend_ncols=1,**prmd)
+
+            ax.set_xlim(sDate,eDate)
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+        elif plotType == 'sme':
+            sme     = sme_plot.SME_PLOT()
+            result  = sme.plot_ax(ax,legend_fontsize='x-large',ylabel_fontdict=ylabel_fontdict,
+                    xlim=(sDate,eDate),**prmd)
+
+            ax.set_xlim(sDate,eDate)
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+        elif plotType == 'HIAMCM':
+            hiamcm  = HIAMCM.HIAMCM()
+            result  = hiamcm.plot_ax(ax,prm='ww',lats=(40.,60.),
+                                     plot_cbar=False,ylabel_fontdict=ylabel_fontdict,**prmd)
+
+            ax.set_xlim(sDate,eDate)
+
+            if xlabels is False:
+                ax.set_xlabel('')
+
+            ax_info = {}
+            ax_info['ax']           = ax
+            ax_info['cbar_pcoll']   = result['cbar_pcoll']
+            ax_info['cbar_label']   = result.get('cbar_label')
+
+            prmd['title'] = result.get('title')
+        else: 
+            if radars is None:
+                _radars = po.radars
+            else:
+                _radars = radars
+
+            ax_info = plot_mstid_values(data_df,ax,radars=_radars,param=param,xlabels=xlabels,
+                    sDate=sDate,eDate=eDate)
+
+            min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
+            ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
+            ax_info['radar_ax']     = True
         ax_list.append(ax_info)
 
         ylim    = prmd.get('ylim')
@@ -1114,8 +1274,8 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
             ax.set_ylim(ylim)
 
         ylabel  = prmd.get('ylabel')
-        # if ylabel is not None:
-        #     ax.set_ylabel(ylabel,fontdict=ylabel_fontdict)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel,fontdict=ylabel_fontdict)
 
         txt = '({!s}) '.format(letters[inx])+prmd.get('title',param)
         left_title_fontdict  = {'weight': 'bold', 'size': 24}
@@ -1124,7 +1284,7 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
 
         season_yr0 = season[:4]
         season_yr1 = season[9:13]
-        txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
+        txt = '{!s} - {!s} Northern Hemisphere Winter'.format(season_yr0,season_yr1)
         fig.text(0.5,1.01,txt,ha='center',fontdict=title_fontdict)
 
     # Set X-Labels and X-Tick Labels
@@ -1144,72 +1304,72 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
                   labels=False,short_labels=True,plot_axvline=False)
 
     fig.tight_layout()
-# SIDEBAR
-    # for param,ax_info in zip(params,ax_list):
-    #     # Plot Colorbar ################################################################
-    #     ax  = ax_info.get('ax')
-    #     if param == 'reject_code':
-    #         ax_pos  = ax.get_position()
-    #         x0  = 1.005
-    #         wdt = 0.015
-    #         y0  = ax_pos.extents[1]
-    #         hgt = ax_pos.height
 
-    #         axl= fig.add_axes([x0, y0, wdt, hgt])
-    #         axl.axis('off')
+    for param,ax_info in zip(params,ax_list):
+        # Plot Colorbar ################################################################
+        ax  = ax_info.get('ax')
+        if param == 'reject_code':
+            ax_pos  = ax.get_position()
+            x0  = 1.005
+            wdt = 0.015
+            y0  = ax_pos.extents[1]
+            hgt = ax_pos.height
 
-    #         legend_elements = []
-    #         for rej_code, rej_dct in reject_codes.items():
-    #             color = rej_dct['color']
-    #             label = rej_dct['label']
-    #             # legend_elements.append(mpl.lines.Line2D([0], [0], ls='',marker='s', color=color, label=label,markersize=15))
-    #             legend_elements.append(mpl.patches.Patch(facecolor=color,edgecolor=color,label=label))
+            axl= fig.add_axes([x0, y0, wdt, hgt])
+            axl.axis('off')
 
-    #         axl.legend(handles=legend_elements, loc='center left', fontsize = 18)
-    #     elif ax_info.get('cbar_pcoll') is not None:
-    #         ax_pos  = ax.get_position()
-    #         x0  = 1.01
-    #         wdt = 0.015
-    #         y0  = ax_pos.extents[1]
-    #         hgt = ax_pos.height
-    #         axColor = fig.add_axes([x0, y0, wdt, hgt])
-    #         axColor.grid(False)
+            legend_elements = []
+            for rej_code, rej_dct in reject_codes.items():
+                color = rej_dct['color']
+                label = rej_dct['label']
+                # legend_elements.append(mpl.lines.Line2D([0], [0], ls='',marker='s', color=color, label=label,markersize=15))
+                legend_elements.append(mpl.patches.Patch(facecolor=color,edgecolor=color,label=label))
 
-    #         cbar_pcoll      = ax_info.get('cbar_pcoll')
-    #         cbar_label      = ax_info.get('cbar_label')
-    #         cbar_ticks      = ax_info.get('cbar_ticks')
-    #         cbar_tick_fmt   = prmd.get('cbar_tick_fmt')
-    #         cbar_tb_vis     = ax_info.get('cbar_tb_vis',False)
+            axl.legend(handles=legend_elements, loc='center left', fontsize = 18)
+        elif ax_info.get('cbar_pcoll') is not None:
+            ax_pos  = ax.get_position()
+            x0  = 1.01
+            wdt = 0.015
+            y0  = ax_pos.extents[1]
+            hgt = ax_pos.height
+            axColor = fig.add_axes([x0, y0, wdt, hgt])
+            axColor.grid(False)
 
-	# 		# fraction : float, default: 0.15
-	# 		#     Fraction of original axes to use for colorbar.
-	# 		# 
-	# 		# shrink : float, default: 1.0
-	# 		#     Fraction by which to multiply the size of the colorbar.
-	# 		# 
-	# 		# aspect : float, default: 20
-	# 		#     Ratio of long to short dimensions.
-	# 		# 
-	# 		# pad : float, default: 0.05 if vertical, 0.15 if horizontal
-	# 		#     Fraction of original axes between colorbar and new image axes.
-    #         cbar  = fig.colorbar(cbar_pcoll,orientation='vertical',
-    #                 cax=axColor,format=cbar_tick_fmt)
+            cbar_pcoll      = ax_info.get('cbar_pcoll')
+            cbar_label      = ax_info.get('cbar_label')
+            cbar_ticks      = ax_info.get('cbar_ticks')
+            cbar_tick_fmt   = prmd.get('cbar_tick_fmt')
+            cbar_tb_vis     = ax_info.get('cbar_tb_vis',False)
 
-    #         cbar_label_fontdict = {'weight': 'bold', 'size': 24}
-    #         cbar.set_label(cbar_label,fontdict=cbar_label_fontdict)
-    #         if cbar_ticks is not None:
-    #             cbar.set_ticks(cbar_ticks)
+			# fraction : float, default: 0.15
+			#     Fraction of original axes to use for colorbar.
+			# 
+			# shrink : float, default: 1.0
+			#     Fraction by which to multiply the size of the colorbar.
+			# 
+			# aspect : float, default: 20
+			#     Ratio of long to short dimensions.
+			# 
+			# pad : float, default: 0.05 if vertical, 0.15 if horizontal
+			#     Fraction of original axes between colorbar and new image axes.
+            cbar  = fig.colorbar(cbar_pcoll,orientation='vertical',
+                    cax=axColor,format=cbar_tick_fmt)
 
-    #         cbar.ax.set_ylim( *(cbar_pcoll.get_clim()) )
+            cbar_label_fontdict = {'weight': 'bold', 'size': 24}
+            cbar.set_label(cbar_label,fontdict=cbar_label_fontdict)
+            if cbar_ticks is not None:
+                cbar.set_ticks(cbar_ticks)
 
-    #         labels = cbar.ax.get_yticklabels()
-    #         fontweight  = cbar_ytick_fontdict.get('weight')
-    #         fontsize    = 18
-    #         for label in labels:
-    #             if fontweight:
-    #                 label.set_fontweight(fontweight)
-    #             if fontsize:
-    #                 label.set_fontsize(fontsize)
+            cbar.ax.set_ylim( *(cbar_pcoll.get_clim()) )
+
+            labels = cbar.ax.get_yticklabels()
+            fontweight  = cbar_ytick_fontdict.get('weight')
+            fontsize    = 18
+            for label in labels:
+                if fontweight:
+                    label.set_fontweight(fontweight)
+                if fontsize:
+                    label.set_fontsize(fontsize)
 
     fig.savefig(fpath,bbox_inches='tight')
 
@@ -1226,24 +1386,24 @@ if __name__ == '__main__':
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_MUSIC','guc')
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter_using_mstid_2016_dates','guc')
 #    mstid_data_dir      = os.path.join('data','mongo_out','mstid_2016','guc')
-    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter','guc')
-    plot_climatologies  = False
-    plot_histograms     = False
+    mstid_data_dir      = os.path.join('data','mongo_out','mstid_GSMR_fitexfilter_rtiThresh-0.25','guc')
+    plot_climatologies  = True
+    plot_histograms     = True
     plot_stackplots     = True
 
     radars          = []
     # 'High Latitude Radars'
-    # radars.append('pgr')
-    # radars.append('sas')
-    # radars.append('kap')
-    # radars.append('gbr')
+    radars.append('pgr')
+    radars.append('sas')
+    radars.append('kap')
+    radars.append('gbr')
     # 'Mid Latitude Radars'
-    # radars.append('cvw')
-    # radars.append('cve')
-    # radars.append('fhw')
-    # radars.append('fhe')
-    # radars.append('bks')
-    # radars.append('wal')
+    radars.append('cvw')
+    radars.append('cve')
+    radars.append('fhw')
+    radars.append('fhe')
+    radars.append('bks')
+    radars.append('wal')
 
 #    # Ordered by Longitude
 #    radars          = []
@@ -1257,28 +1417,44 @@ if __name__ == '__main__':
 #    radars.append('bks')
 #    radars.append('wal')
 #    radars.append('gbr')
-    # Southern Radars
-    # radars.append('san')
-    radars.append('bpk')
-    radars.append('dce')
-    radars.append('dcn')
+#   southern radars
     radars.append('fir')
-    radars.append('hal')
-    radars.append('mcm')
-    radars.append('sps')
-    radars.append('san')
-    radars.append('sys')
-    radars.append('sye')
-    radars.append('ker')
     radars.append('tig')
     radars.append('unw')
-    radars.append('zho')
+    # buckland park
+    radars.append('bpk')
+
     params = []
     params.append('meanSubIntSpect_by_rtiCnt') # This is the MSTID index.
+#    params.append('meanSubIntSpect')
+#    params.append('intSpect_by_rtiCnt')
+    # params.append('intSpect')
 
+#    params.append('sig_001_azm_deg')
+#    params.append('sig_001_lambda_km')
+#    params.append('sig_001_period_min')
+#    params.append('sig_001_vel_mps')
 
-    seasons = list_seasons(yr_0=2010,yr_1=2023)
+    params.append('reject_code')
 
+#    params.append('U_10HPA')
+#    params.append('U_1HPA')
+
+#    params.append('OMNI_R_Sunspot_Number')
+#    params.append('OMNI_Dst')
+#    params.append('OMNI_F10.7')
+#    params.append('OMNI_AE')
+
+#    params.append('1-H_AE_nT')
+#    params.append('1-H_DST_nT')
+#    params.append('DAILY_F10.7_')
+#    params.append('DAILY_SUNSPOT_NO_')
+
+    seasons = list_seasons()
+#    seasons = []
+#    seasons.append('20121101_20130501')
+##    seasons.append('20171101_20180501')
+#    seasons.append('20181101_20190501')
 
 ################################################################################
 # LOAD RADAR DATA ##############################################################
@@ -1300,27 +1476,72 @@ if __name__ == '__main__':
 
         po_dct[param]   = po
 
+################################################################################
+# CLIMATOLOGIES ################################################################
+
+    if plot_climatologies:
+        for param,po in po_dct.items():
+            print('Plotting Climatology: {!s}'.format(param))
+            po.plot_climatology()
+
+################################################################################
+# HISTOGRAMS ###################################################################
+    if plot_histograms:
+        for param,po in po_dct.items():
+            print('Plotting Climatology: {!s}'.format(param))
+            po.plot_histograms()
 
 ################################################################################
 # STACKPLOTS ###################################################################
 
     stack_sets  = {}
+##    ss = stack_sets['cdaweb_omni'] = []
+##    ss.append('meanSubIntSpect_by_rtiCnt')
+##    ss.append('1-H_AE_nT')
+##    ss.append('1-H_DST_nT')
+##    ss.append('DAILY_F10.7_')
+###    ss.append('DAILY_SUNSPOT_NO_')
 
+#    ss = stack_sets['omni'] = []
+#    ss.append('meanSubIntSpect_by_rtiCnt')
+#    ss.append('OMNI_AE')
+#    ss.append('OMNI_Dst')
+##    ss.append('OMNI_F10.7')
+##    ss.append('OMNI_R_Sunspot_Number')
+#
+#    ss = stack_sets['mstid_merra2'] = []
+#    ss.append('meanSubIntSpect_by_rtiCnt')
+#    ss.append('U_1HPA')
+#    ss.append('U_10HPA')
+#
+#    ss = stack_sets['data_quality'] = []
+#    ss.append('meanSubIntSpect_by_rtiCnt')
+    ss.append('reject_code')
 
     ss = stack_sets['mstid_index_reduced'] = []
-    # ss.append('reject_code')
     ss.append('meanSubIntSpect_by_rtiCnt')
-    # ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
-    # ss.append('intSpect')
+    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
+#
+##    ss = stack_sets['mstid_index'] = []
+##    ss.append('meanSubIntSpect_by_rtiCnt')
+
+    # ss = stack_sets['figure_3'] = []
+    # ss.append('merra2CipsAirsTimeSeries')
+    # ss.append('HIAMCM')
+    # ss.append('gnss_dtec_gw')
+    # ss.append('meanSubIntSpect_by_rtiCnt')
+    # ss.append('lstid_ham')
+    # ss.append('sme')
+#    ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
 
     if plot_stackplots:
         for stack_code,stack_params in stack_sets.items():
             stack_dir  = os.path.join(output_base_dir,'stackplots',stack_code)
             prep_dir(stack_dir,clear=True)
             for season in seasons:
-                # if stack_code == 'figure_3':
-                #     if season != '20181101_20190501':
-                #         continue
+                if stack_code == 'figure_3':
+                    if season != '20181101_20190501':
+                        continue
                 png_name    = '{!s}_stack_{!s}.png'.format(season,stack_code)
                 png_path    = os.path.join(stack_dir,png_name) 
 

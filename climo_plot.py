@@ -396,7 +396,11 @@ def get_y_coords(ut_time,st_uts,radar,radars):
 def get_coords(radar,win_sDate,radars,sDate,eDate,st_uts,verts=True):
     # Y-coordinate.
     x1  = float(get_x_coords(win_sDate,sDate,eDate))
-    y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars))
+    try:
+        y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars))
+    except:
+        print("That float conversion error on radar {}".format(radar))
+        y1  = float(get_y_coords(win_sDate.hour,st_uts,radar,radars)[0])
 
     if verts:
 #        x1,y1   = x1+0,y1+0
@@ -565,8 +569,8 @@ def list_seasons(yr_0=2010,yr_1=2022):
     yr = yr_0
     seasons = []
     while yr < yr_1:
-        dt_0 = datetime.datetime(yr,11,1)
-        dt_1 = datetime.datetime(yr+1,5,1)
+        dt_0 = datetime.datetime(yr,1,1)
+        dt_1 = datetime.datetime(yr+1,1,1)
 
         dt_0_str    = dt_0.strftime('%Y%m%d')
         dt_1_str    = dt_1.strftime('%Y%m%d')
@@ -602,6 +606,8 @@ class ParameterObject(object):
 
         # Get list of seasons.
         if seasons is None:
+            # Do Not set Seasons here
+            # It does not work
             seasons = list_seasons()
         self.attrs_global['seasons']    = seasons
 
@@ -816,10 +822,8 @@ class ParameterObject(object):
                     fl      = glob.glob(patt)[0]
                 except:
                     fl = None
-                    print('error happened')
-                # except:
-                    # return None
-                    # import ipdb; ipdb.set_trace()
+                    print('No data file found matching this pattern {}. Aborting'.format(patt))
+                    return
                 tqdm.tqdm.write('--> {!s}: {!s}'.format(param,fl))
                 dsr = xr.open_dataset(fl)
                 ds.append(dsr)
@@ -872,12 +876,16 @@ class ParameterObject(object):
         return dataDct
 
     def write_csv(self,season,output_dir=None):
+        
         """
         Save data to CSV files.
         """
 
         param           = self.prmd.get('param')
-        df              = self.data[season]['df']
+        try:
+            df              = self.data[season]['df']
+        except:
+            import ipdb; ipdb.set_trace()
         attrs_radars    = self.data[season]['attrs_radars']
         attrs_season    = self.data[season]['attrs_season']
         attrs_global    = self.attrs_global
@@ -934,7 +942,7 @@ class ParameterObject(object):
             data_df = self.data[season]['df']
             
             sDate, eDate = season_to_datetime(season)
-            ax_info = plot_mstid_values(data_df,ax,radars=radars,param=param,sDate=sDate,eDate=eDate)
+            ax_info = plot_mstid_values(data_df,ax,radars=radars,param=param,sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
             min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
             ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
             ax_list.append(ax_info)
@@ -1107,7 +1115,7 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
     print(' Plotting Stackplot: {!s}'.format(fpath))
     nrows   = len(params)
     ncols   = 1
-    fig = plt.figure(figsize=(25,nrows*5))
+    fig = plt.figure(figsize=(25,nrows*20))
 
     ax_list = []
     for inx,param in enumerate(params):
@@ -1270,7 +1278,7 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
                 _radars = radars
 
             ax_info = plot_mstid_values(data_df,ax,radars=_radars,param=param,xlabels=xlabels,
-                    sDate=sDate,eDate=eDate)
+                    sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
 
             min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
             ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
@@ -1427,11 +1435,21 @@ if __name__ == '__main__':
 #    radars.append('gbr')
     # Southern Radars
     # radars.append('san')
+    radars.append('bpk')
+    radars.append('dce')
+    radars.append('dcn')
     radars.append('fir')
+    radars.append('hal')
+    # radars.append('ker')
+    radars.append('mcm')
+    radars.append('sps')
+    radars.append('san')
+    radars.append('sys')
+    radars.append('sye')
+    radars.append('ker')
     radars.append('tig')
     radars.append('unw')
-    # buckland park
-    radars.append('bpk')
+    radars.append('zho')
     params = []
     params.append('meanSubIntSpect_by_rtiCnt') # This is the MSTID index.
     # params.append('intSpect')
@@ -1458,7 +1476,7 @@ if __name__ == '__main__':
 #    params.append('DAILY_F10.7_')
 #    params.append('DAILY_SUNSPOT_NO_')
 
-    seasons = list_seasons()
+    seasons = list_seasons(yr_0=2010,yr_1=2023)
 #    seasons = []
 #    seasons.append('20121101_20130501')
 ##    seasons.append('20171101_20180501')
