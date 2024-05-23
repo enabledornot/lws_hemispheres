@@ -621,10 +621,11 @@ def modify_for_best(dataDct):
                 ts_list.append(select_ts(i,df[radar]))
             v_radar_data.append(pd.concat(ts_list))
             v_radar_data[-1].name = "v_{}".format(dex)
-            new_radars.append(v_radar_data[-1].name)
         new_df = pd.concat(v_radar_data,axis=1)
         dd_y['df'] = new_df
         # import ipdb;ipdb.set_trace()
+    for i in range(4):
+        new_radars.append("v_{}".format(i))
     return new_radars
 class ParameterObject(object):
     def __init__(self,param,radars,seasons=None,
@@ -1270,7 +1271,7 @@ if __name__ == '__main__':
     params.append('meanSubIntSpect_by_rtiCnt') # This is the MSTID index.
 
 
-    seasons = list_seasons(yr_0=2010,yr_1=2011)
+    seasons = list_seasons(yr_0=2010,yr_1=2023)
 
 
 ################################################################################
