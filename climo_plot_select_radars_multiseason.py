@@ -19,6 +19,7 @@ import scipy as sp
 import scipy.stats
 import pandas as pd
 import xarray as xr
+# from datetime import datetime
 
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -577,7 +578,6 @@ def list_seasons(yr_0=2010,yr_1=2022):
         season      = '{!s}_{!s}'.format(dt_0_str,dt_1_str)
         seasons.append(season)
         yr += 1
-
     return seasons
 def index_to_ts_i(ts):
     return int(ts.time().hour / 2)
@@ -632,6 +632,31 @@ def modify_for_best(dataDct):
         dd_y['df'] = new_df
     # import ipdb; ipdb.set_trace()
     return new_radars, radar_labels
+def remove_year_from_index(index):
+    return index.replace(year=2000)
+def normalize_series(r_series):
+    series_c = r_series.copy()
+    series_c.index = series_c.index.map(remove_year_from_index)
+    return series_c
+# merges together all seasons within the dataDct into one merged season
+def merge_seasons(dataDct):
+    radar_season = {}
+    for season in dataDct:
+        dd_s_df = dataDct[season]['df']
+        for radar in dd_s_df:
+            r_series = dd_s_df[radar]
+            if radar not in radar_season:
+                radar_season[radar] = []
+            
+            radar_season[radar].append(normalize_series(r_series))
+            # import ipdb; ipdb.set_trace()
+    new_index = pd.date_range(start=datetime.datetime(year=2001,month=1,day=1),end=datetime.datetime(year=2002,month=1,day=1),periods=4381)[:-1]
+    for radar in radar_season:
+        radar_season[radar] = pd.concat(radar_season[radar],axis=1).mean(axis=1,skipna=True)
+    new_df = pd.concat(radar_season,axis=1)
+    dataDct['20000101_20010101'] = {}
+    dataDct['20000101_20010101']['df'] = new_df
+    # import ipdb;ipdb.set_trace()
 class ParameterObject(object):
     def __init__(self,param,radars,seasons=None,
             output_dir='output',default_data_dir=os.path.join('data','mstid_index'),
@@ -824,8 +849,9 @@ class ParameterObject(object):
         # Clean up lat_lon data table
         if selfUpdate is True:
             self.lat_lons    = pd.DataFrame(lat_lons).drop_duplicates()
-        # import ipdb; ipdb.set_trace()
+        merge_seasons(dataDct)
         self.radars, self.radar_labels = modify_for_best(dataDct)
+        # import ipdb; ipdb.set_trace()
         return dataDct
 
     def write_csv(self,season,output_dir=None):
@@ -1059,7 +1085,6 @@ class ParameterObject(object):
         fig.savefig(fpath,bbox_inches='tight')
 
 def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stackplot.png'):
-
     _sDate, _eDate = season_to_datetime(season)
     if sDate is None:
         sDate = _sDate
@@ -1088,7 +1113,7 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
         except:
             # ogkmig5ok0
             print('error IDd')
-            # import ipdb;ipdb.set_trace()
+            import ipdb;ipdb.set_trace()
         prmd    = po.prmd
 
         if inx == nrows-1:
@@ -1100,11 +1125,10 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
             _radars = po.radars
         else:
             _radars = radars
-
         ax_info = plot_mstid_values(data_df,ax,radars=_radars,radar_labels=po.radar_labels,param=param,xlabels=xlabels,
                 sDate=sDate,eDate=eDate,st_uts=list(range(0,24,2)))
 
-        min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
+        # min_orf   = po.data[season]['attrs_season'].get('min_orig_rti_fraction')
         # ax_info['ax'].set_title('RTI Fraction > {:0.2f}'.format(min_orf),loc='right')
         ax_info['radar_ax']     = True
         ax_list.append(ax_info)
@@ -1312,12 +1336,14 @@ if __name__ == '__main__':
     ss.append('meanSubIntSpect_by_rtiCnt')
     # ss.append('meanSubIntSpect_by_rtiCnt_reducedIndex')
     # ss.append('intSpect')
-
+    seasons.append("20000101_20010101")
+    # import ipdb;ipdb.set_trace()
     if plot_stackplots:
         for stack_code,stack_params in stack_sets.items():
             stack_dir  = os.path.join(output_base_dir,'stackplots',stack_code)
             prep_dir(stack_dir,clear=True)
-            for season in seasons:
+            # import ipdb; ipdb.set_trace()
+            for season in seasons[-1:]:
                 # if stack_code == 'figure_3':
                 #     if season != '20181101_20190501':
                 #         continue
