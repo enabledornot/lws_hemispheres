@@ -510,7 +510,10 @@ def plot_mstid_values(data_df,ax,sDate=None,eDate=None,
         for st_inx,st_ut in enumerate(st_uts):
             # import ipdb; ipdb.set_trace()
             ypos = len(radars)*st_inx + rdr_inx + 0.5
-            ax.text(-0.002,ypos,radar_labels[season][radar][st_inx],transform=trans,ha='right',va='center')
+            if radar_labels:
+                ax.text(-0.002,ypos,radar_labels[season][radar][st_inx],transform=trans,ha='right',va='center')
+            else:
+                ax.text(-0.002,ypos,radar,transform=trans,ha='right',va='center')
 
     # Add UT Time Labels
     for st_inx,st_ut in enumerate(st_uts):
@@ -851,6 +854,7 @@ class ParameterObject(object):
             self.lat_lons    = pd.DataFrame(lat_lons).drop_duplicates()
         merge_seasons(dataDct)
         self.radars, self.radar_labels = modify_for_best(dataDct)
+        self.radar_labels = None
         # import ipdb; ipdb.set_trace()
         return dataDct
 
@@ -929,8 +933,8 @@ class ParameterObject(object):
 
             season_yr0 = season[:4]
             season_yr1 = season[9:13]
-            txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
-            ax.set_title(txt,fontdict=title_fontdict)
+            # txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
+            ax.set_title("Southern Hemisphere",fontdict=title_fontdict)
 
         fig.tight_layout(w_pad=2.25)
 
@@ -1148,8 +1152,8 @@ def stackplot(po_dct,params,season,radars=None,sDate=None,eDate=None,fpath='stac
 
         season_yr0 = season[:4]
         season_yr1 = season[9:13]
-        txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
-        fig.text(0.5,1.01,txt,ha='center',fontdict=title_fontdict)
+        # txt = '{!s} - {!s} Southern Hemisphere'.format(season_yr0,season_yr1)
+        fig.text(0.5,1.01,"Southern Hemisphere",ha='center',fontdict=title_fontdict)
 
     # Set X-Labels and X-Tick Labels
     for inx,(param,ax_info) in enumerate(zip(params,ax_list)):
