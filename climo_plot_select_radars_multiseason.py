@@ -356,7 +356,7 @@ def my_xticks(sDate,eDate,ax,radar_ax=False,labels=True,short_labels=False,
 
             if labels:
                 ypos    = -0.025
-                txt     = curr_date.strftime('%d %b\n%Y')
+                txt     = curr_date.strftime('%d %b')
                 ax.text(xpos,ypos,txt,transform=ytransaxes,
                         ha='left', va='top',rotation=0,
                         fontdict=fontdict)
@@ -853,8 +853,8 @@ class ParameterObject(object):
         if selfUpdate is True:
             self.lat_lons    = pd.DataFrame(lat_lons).drop_duplicates()
         merge_seasons(dataDct)
-        self.radars, self.radar_labels = modify_for_best(dataDct)
         self.radar_labels = None
+        self.radars, self.radar_labels = modify_for_best(dataDct)
         # import ipdb; ipdb.set_trace()
         return dataDct
 

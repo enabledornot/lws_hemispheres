@@ -35,6 +35,8 @@ max_lambda = 750.
 
 def generate_radar_dict():
     rad_list = []
+    # radar cords are refering to the location of the radar
+    # not the radars center
     # rad_list.append(('bks', 39.6, -81.1))
     # rad_list.append(('wal', 41.8, -72.2))
     # rad_list.append(('fhe', 42.5, -95.0))
@@ -45,10 +47,20 @@ def generate_radar_dict():
     # rad_list.append(('kap', 55.5, -85.0))
     # rad_list.append(('sas', 56.1, -103.8))
     # rad_list.append(('pgr', 58.0, -123.5))
-    rad_list.append(('fir', -52.0, -59.0))
-    rad_list.append(('tig', -43.0, 147.0))
     rad_list.append(('bpk', -34.62, 138.64))
+    rad_list.append(('dce', -75.090, 123.350))
+    rad_list.append(('dcn', -75.090, 123.350))
+    rad_list.append(('fir', -52.0, -59.0))
+    rad_list.append(('hal', -75.52, -26.63))
+    rad_list.append(('ker', -49.22, 70.14))
+    rad_list.append(('mcm', -77.88, 166.73))
+    rad_list.append(('san', -71.68, -2.85))
+    rad_list.append(('sps', -89.995, 118.291))
+    rad_list.append(('sye', -69.0, 39.58))
+    rad_list.append(('sys', -69.0, 39.58))
+    rad_list.append(('tig', -43.0, 147.0))
     rad_list.append(('unw', -46.51, 168.38))
+    rad_list.append(('zho', -69.38, 76.38))
 
 #    rad_list.append(('sto', 63.86, -21.031))
 #    rad_list.append(('pyk', 63.77, -20.54))
